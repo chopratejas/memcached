@@ -8,6 +8,9 @@ import memcached.util.ByteBufHelper;
 
 import java.nio.charset.Charset;
 
+import static memcached.util.Constants.MAX_KEY_SIZE_IN_BYTES;
+import static memcached.util.Constants.MAX_VALUE_SIZE_IN_BYTES;
+
 /***
  * SET command parser is responsible for parsing the set commands in accordance with
  * memcached protocol listed: https://github.com/memcached/memcached/blob/master/doc/protocol.txt
@@ -100,7 +103,8 @@ public class SetCommandParser implements CommandParser {
       // Extract the len of the data which will follow this command
       Integer size = getSize(payloadMeta);
 
-      if (size == null || size < 0) {
+      if (size == null || size < 0 || size >= MAX_VALUE_SIZE_IN_BYTES ||
+              Buffer.buffer(key).length() > MAX_KEY_SIZE_IN_BYTES) {
         return null;
       }
       return new MemcacheMessage(MemcacheMessage.CommandType.SET, key.array().clone(), null, size);

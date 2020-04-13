@@ -293,4 +293,23 @@ public class CommandVerticleTest {
       }
     });
   }
+
+  /***
+   * Handle set request with unsupported key or value size.
+   * @param vertx
+   * @param testContext
+   */
+  @Test
+  @DisplayName("Handle set with unsupported key or value size")
+  void verticleHandleSetWithUnsupportedSize(Vertx vertx, VertxTestContext testContext) {
+    assert socket != null;
+    socket.write("set abc 0 0 1025\r\nhell\ro\r\n"); // max value size supported is 1k
+    socket.handler(buffer -> {
+      if (isClientError(buffer)) {
+        testContext.completeNow();
+      } else {
+        testContext.failNow(new Throwable("Unexpected response"));
+      }
+    });
+  }
 }

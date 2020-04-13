@@ -1,9 +1,7 @@
 package memcached;
 
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
+import io.vertx.core.*;
+import io.vertx.core.json.JsonObject;
 
 public class MainVerticle extends AbstractVerticle {
 
@@ -12,9 +10,13 @@ public class MainVerticle extends AbstractVerticle {
    */
   @Override
   public void start(Promise<Void> promise){
+
+    DeploymentOptions options = new DeploymentOptions()
+            .setConfig(new JsonObject().put("tcp.port", 11211));
+
     CompositeFuture.all(
-      deployHelper(CommandVerticle.class.getName()),  // Command processor
-      deployHelper(CacheVerticle.class.getName()))    // Cache processor
+      deployHelper(CommandVerticle.class.getName(), options),  // Command processor
+      deployHelper(CacheVerticle.class.getName(), options))    // Cache processor
       .setHandler(result -> {
         if(result.succeeded()){
           promise.complete();
@@ -24,9 +26,9 @@ public class MainVerticle extends AbstractVerticle {
       });
   }
 
-  private Future<Void> deployHelper(final String name){
+  private Future<Void> deployHelper(final String name, DeploymentOptions options){
     final Promise<Void> promise = Promise.promise();
-    vertx.deployVerticle(name, res -> {
+    vertx.deployVerticle(name, options, res -> {
       if (res.failed()){
         System.out.println("Failed to deploy verticle! " + name);
         promise.fail(res.cause());

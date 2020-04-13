@@ -2,9 +2,12 @@ package memcached;
 
 import io.netty.buffer.ByteBuf;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.NetServer;
@@ -65,82 +68,74 @@ public class CommandVerticle extends AbstractVerticle {
         // which have different ways of sending commands.
         ArrayList<ByteBuf> lines = helper.extractCrlfSplitBufs(buffer.getByteBuf());
 
+        // Asynchronous event bus response handler. This processes responses obtained from
+        // the event bus.
+        Handler<AsyncResult<Message<Object>>> eventBusResponseHandler = eventBusResponse -> {
+          if (eventBusResponse.succeeded()) {
+            // Extract the response from event bus and write output to socket
+            MemcacheMessage response = Json.decodeValue(eventBusResponse.result().body().toString(), MemcacheMessage.class);
+            ByteBuf b = decoder.translate(response);
+            netSocket.write(Buffer.buffer(b));
+          } else {
+            netSocket.write(Buffer.buffer(CR));
+          }
+        };
+
+        // Process each line
         for (ByteBuf byteBuf : lines) {
           // Do not process a line if it is empty and no input is expected
           if (helper.isCRLFOnly(byteBuf) && !expectData[0]) {
             netSocket.write(Buffer.buffer(CR));
             return;
           }
-
           // Decode the input buffer and extract a message to process
           MemcacheMessage command = decoder.decode(byteBuf, expectData[0]);
-
-          // If input cannot be parsed, return client error.
           if (command == null) {
             netSocket.write(Buffer.buffer(CLIENT_ERROR));
             netSocket.write(Buffer.buffer(CRLF));
             return;
-          } else {
-            // A SET command expects input meta information (such as keys, length, etc.) in one CRLF ended byteBuf
-            // and actual value in the following CRLF ended bytebuf. Hence, maintain state in the verticle
-            // which keeps track of expectData, i.e. the state machine expects the next incoming bytes to be
-            // the data which corresponds to the previously sent SET command.
-            // This is useful when clients such as telnet will send SET command in two separate requests
-            // as discussed above
-            if (command.getCommandType().equals(CommandType.SET)) {
-              // Capture key and length from first SET command issued
-              if (!expectData[0]) {
-                expectData[0] = true;
-                oldCommand[0] = command;
-              } else {
-                // Capture value associated with the key in the previous SET cmd.
-                MemcacheMessage prevCommand = oldCommand[0];
-                command.setKey(prevCommand.getKey().clone());
-                expectData[0] = false;
+          }
 
-                // Compare the length of data of current buffer with previous command's length. They should match
-                if (command.getLen() != prevCommand.getLen()) {
-                  System.out.println("SET: Length of data does not match length in the command: " +
-                    "data's length: " + command.getLen() + ", expected length: " + prevCommand.getLen());
-                  netSocket.write(Buffer.buffer(CLIENT_ERROR));
-                  netSocket.write(Buffer.buffer(CRLF));
-                  return;
-                }
-              }
-            }
-
-            // Pass the message to event bus
+          // A SET command expects input meta information (such as keys, length, etc.) in one CRLF ended byteBuf
+          // and actual value in the following CRLF ended bytebuf. Hence, maintain state in the verticle
+          // which keeps track of expectData, i.e. the state machine expects the next incoming bytes to be
+          // the data which corresponds to the previously sent SET command.
+          // This is useful when clients such as telnet will send SET command in two separate requests
+          // as discussed above
+          if (command.getCommandType().equals(CommandType.SET)) {
+            // Capture key and length from first SET command issued
             if (!expectData[0]) {
-              // Note that event bus only accepts JsonObject, so JSON-ify the message
-              if (command.getKey() == null) {
+              expectData[0] = true;
+              oldCommand[0] = command;
+            } else {
+              // Capture value associated with the key in the previous SET cmd.
+              MemcacheMessage prevCommand = oldCommand[0];
+              command.setKey(prevCommand.getKey().clone());
+              expectData[0] = false;
+
+              // Compare the length of data of current buffer with previous command's length. They should match
+              if (command.getLen() != prevCommand.getLen()) {
+                System.out.println("SET: Length of data does not match length in the command: " +
+                        "data's length: " + command.getLen() + ", expected length: " + prevCommand.getLen());
                 netSocket.write(Buffer.buffer(CLIENT_ERROR));
                 netSocket.write(Buffer.buffer(CRLF));
                 return;
               }
-
-              JsonObject message = JsonObject.mapFrom(command);
-              eventBus.send(Constants.ADDRESS, message, reply -> {
-                if (reply.succeeded()) {
-                  // Extract the response from event bus and write output to socket
-                  MemcacheMessage response = Json.decodeValue(reply.result().body().toString(), MemcacheMessage.class);
-                  ByteBuf b = decoder.translate(response);
-                  //System.out.println("Command: " + response.getCommandType().toString() + ", Received reply: " + b.toString(Charset.defaultCharset()));
-                  netSocket.write(Buffer.buffer(b));
-                } else {
-                  System.out.println("No reply");
-                  netSocket.write(Buffer.buffer(CR));
-                }
-              });
             }
+          }
+
+          // Pass the message to event bus
+          if (!expectData[0]) {
+            // Note that event bus only accepts JsonObject, so JSON-ify the message
+            eventBus.send(Constants.ADDRESS, JsonObject.mapFrom(command), eventBusResponseHandler);
           }
         }
       });
-
     });
-    server.listen(DEFAULT_PORT, "localhost", tcp -> {
+    server.listen(config().getInteger("tcp.port", DEFAULT_PORT), "localhost", tcp -> {
       if (tcp.succeeded()) {
         startFuture.complete();
-        System.out.println("Listening on port " + DEFAULT_PORT);
+        System.out.println("Listening on port " + config().getInteger("tcp.port", DEFAULT_PORT));
       } else {
         startFuture.fail(tcp.cause());
       }

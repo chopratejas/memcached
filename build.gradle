@@ -31,6 +31,7 @@ dependencies {
   implementation "io.vertx:vertx-junit5:$vertxVersion"
   implementation "io.vertx:vertx-health-check:$vertxVersion"
   implementation "io.vertx:vertx-shell:$vertxVersion"
+  compile "io.vertx:vertx-config:$vertxVersion"
   compile "com.googlecode.concurrentlinkedhashmap:concurrentlinkedhashmap-lru:1.4.2"
   
   testImplementation "io.vertx:vertx-junit5:$vertxVersion"

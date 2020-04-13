@@ -12,6 +12,8 @@ import memcached.util.Constants;
 
 import java.nio.charset.Charset;
 
+import static memcached.util.Constants.NUM_CACHE_ENTRIES;
+
 /***
  * Cache verticle picks up messages from the event bus and processes them.
  * The message is a MemcacheMessage which contains the following:
@@ -37,7 +39,7 @@ public class CacheVerticle extends AbstractVerticle {
   @Override
   public void start() {
     final EventBus eventBus = vertx.eventBus();
-    LRUCache<ByteBuf, ByteBuf> cache = new LRUCache<>(1000);
+    LRUCache<ByteBuf, ByteBuf> cache = new LRUCache<>(NUM_CACHE_ENTRIES); // allow 10k entries.
 
     // For each received message, extract the memcachemessage object and process it
     eventBus.consumer(Constants.ADDRESS, receivedMessage -> {
