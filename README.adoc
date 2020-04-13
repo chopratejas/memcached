@@ -296,7 +296,6 @@ ConcurrentMap<K, V> cache = new ConcurrentLinkedHashMap.Builder<K, V>()
     .build();
 ```
 
-
 Beyond LRU::
 
 The least recently used policy provides a good reference point. It does not suffer
@@ -324,6 +323,14 @@ Use mockito for unit testing::
 Current testing strategy covers 100% of the code lines, we have Command & Cache verticle
 tests and LRU cache test. In the future, we would like to evaluate mocking an event bus
 for writing even smaller units of tests.
+
+Extensibility::
+
+Features that can be added to our implementation with relatively few changes:
+
+- Get multiple keys
+- Set flag & expTime in value cached
+- Support noreply optional parameter
 
 == References for code and design
 '''
