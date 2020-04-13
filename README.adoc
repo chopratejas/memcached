@@ -55,7 +55,7 @@ END
 Configuration file format:
 ```
 {
-  "http.port" : 11211
+  "tcp.port" : 11211
 }
 ```
 
