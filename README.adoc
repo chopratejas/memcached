@@ -78,23 +78,6 @@ The `/etc/hosts` file should look like:
 ::1             localhost       computer-name
 ```
 
-
-It happens to be the incorrect line endings in /etc/hosts file.
-I edited it using Sublime Text 2, which happens to be a wrong choice as it
-added CR line terminators.
-
-$ file -b /etc/hosts
-ASCII English text, with CR line terminators
-As mentioned in https://discussions.apple.com/message/20103434#20103434, it must be only ASCII English text.
-
-So, copying the /etc/hosts contents and overriding this file using "vi", resolved the problem. Now:
-
-$ file -b /etc/hosts
-ASCII English text
-Modify the /etc/hosts to match the machine name:
-
-
-
 <<<
 == Design Decisions
 '''
