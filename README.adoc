@@ -144,8 +144,9 @@ to process them.
 
 image::https://vertx.io/docs/guide-for-java-devs/intro/images/event-loop.png[]
 
-===== Simple to use concurrency and scalability
+==== Simple to use concurrency and scalability
 '''
+
 A Vert.x application consists of loosely coupled components, which can be
 rearranged to match increasing performance requirements.
 
@@ -229,9 +230,8 @@ The problem with this approach is that every access operation requires updating
 the list. To function in a concurrent setting the entire data structure must be
 synchronized.
 
-Lock Amortization
+* Lock Amortization
 
-'''
 An alternative approach is to realize that the data structure can be split into
 two parts: a synchronous view and an asynchronous view. The hash-table must be
 synchronous from the perspective of the caller so that a read after a write
@@ -256,14 +256,14 @@ time complexity. We have used LRU in our implementation.
 We made several design tradeoffs in our implementation, most of them are easy to
 implement.
 
-- Multiple Instances of Verticles
+Multiple Instances of Verticles::
 
 Our implementation uses one instance each of Cache Verticle and Command Verticle.
 This works well in a 2-core system. Most of the modern systems have multiple cores.
 We can extend our code to instantiate multiple instances of these verticles, thereby
 fully leveraging the parallelism offered by multi-core systems.
 
-- Distributed Memcached
+Distributed Memcached::
 
 The current implementation works on a single node. To support a distributed
 memcache server, we can write a client that performs a distributed lookup and insert.
@@ -271,19 +271,7 @@ We would use Consistent Hashing methods, such as those used in Chord, Pastry to
 forward requests from the clients to appropriate memcached server nodes, each running
 their own local cache. This will allow elastic scale by use.
 
-- Beyond LRU
-
-The least recently used policy provides a good reference point. It does not suffer
-degradation scenarios as the cache size increases, it provides a reasonably good
-hit rate, and can be implemented with O(1) time complexity.
-
-However, an LRU policy only utilizes the recency of an entry and does not take
-advantage of its frequency. The
-http://web.cse.ohio-state.edu/hpcs/WWW/HTML/publications/abs02-6.html[Low Inter-Reference Recency Set Replacement policy]
-does, while also maintaining the same beneficial characteristics. This allows
-improving the hit rate at a very low cost.
-
-- LRU cache based on weight, instead of number of elements
+LRU cache based on weight, instead of number of elements::
 
 The current implementation of LRU cache takes in the number of cache entries and
 evicting the least recently accessed. Instead, we could have a policy which takes
@@ -308,7 +296,8 @@ ConcurrentMap<K, V> cache = new ConcurrentLinkedHashMap.Builder<K, V>()
     .build();
 ```
 
-- Beyond LRU
+
+Beyond LRU::
 
 The least recently used policy provides a good reference point. It does not suffer
 degradation scenarios as the cache size increases, it provides a reasonably good
@@ -324,14 +313,20 @@ We can also use the https://github.com/google/guava[Google Guava Cache] instead 
 provides different eviction algorithms which take care of specific use cases such
 as streaming data.
 
-- Dockerize the server
+Dockerize the server::
 
 Ideally, we would've preferred dockerizing this vertx application.
 Dockerizing the gradle application would allow any user to pull docker images
 and run it on any machine.
 
-== References for code and design
+Use mockito for unit testing::
 
+Current testing strategy covers 100% of the code lines, we have Command & Cache verticle
+tests and LRU cache test. In the future, we would like to evaluate mocking an event bus
+for writing even smaller units of tests.
+
+== References for code and design
+'''
 * https://vertx.io/docs/[Vert.x Documentation]
 * https://memcached.org/about[Memcached basics]
 * https://github.com/ben-manes/concurrentlinkedhashmap[Concurrent Linked Hash Map for LRU Cache]
