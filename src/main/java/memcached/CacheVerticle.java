@@ -15,6 +15,8 @@ import java.nio.charset.Charset;
 import static memcached.util.Constants.NUM_CACHE_ENTRIES;
 
 /***
+ * It is important to learn about Vert.x: https://vertx.io/ - this is a great
+ * resource for learning about it.
  * Cache verticle picks up messages from the event bus and processes them.
  * The message is a MemcacheMessage which contains the following:
  * - CommandType: Indicating if it is a GET or SET
